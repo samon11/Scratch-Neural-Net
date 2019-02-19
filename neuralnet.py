@@ -1,7 +1,7 @@
 """
 neuralnet.py
 An implementation of a Deep Feed Forward
-Neural Network in python.
+Neural Network framework in python.
 
 @author: Michael Samon
 """
@@ -18,6 +18,7 @@ class Network:
     """
     def __init__(self):
         self.training = False
+        self.compiled = False
 
         # list containing layer objects in order of graph definition
         self.layers = []
@@ -86,6 +87,18 @@ class Network:
             layer.weights = random_matrix
 
             self.weight_matrices.append(random_matrix)
+        self.compiled = True
+
+    def forward_pass(self, x):
+        """
+        Input a batch of data and return the output of the
+        compiled graph.
+        """
+
+        if not self.compiled:
+            raise NeuralError(
+                "Network graph not compiled. Must run 'compile_graph()' first."
+                )
 
 
 class Dense:
