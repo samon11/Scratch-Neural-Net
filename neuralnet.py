@@ -29,8 +29,6 @@ class Network:
         # list containing the successive shapes of network layers
         self.shapes = []
 
-        self.weight_matrices = []
-
     def get_matrix_shapes(self):
         """
         Computes a list of all layer shapes with the input matrix
@@ -84,7 +82,7 @@ class Network:
             random_matrix = np.random.rand(shape[0], shape[1])
             layer.weights = random_matrix
 
-            self.weight_matrices.append(random_matrix)
+            #self.weight_matrices.append(random_matrix)
         self.compiled = True
 
     def forward_pass(self, x):
@@ -99,11 +97,11 @@ class Network:
                 )
         
         output = None
-        for i, weights in enumerate(self.weight_matrices):
+        for i, layer in enumerate(self.layers):
             if i == 0:
-                output = np.dot(x, self.weight_matrices[0])
+                output = np.dot(x, layer.weights) + layer.b
     
-            output = np.dot(output, self.weight_matrices[i])
+            output = np.dot(output, layer.weights) + layer.b
 
         return output
 
@@ -123,8 +121,11 @@ class Dense:
         # tuple containing the layer's weight matrix shape
         self.shape = None
 
-        # the weight matrix
+        # weights matrix
         self.weights = None
+
+        # set default bias value
+        self.b = 0
 
 
 if __name__ == "__main__":
@@ -133,7 +134,7 @@ if __name__ == "__main__":
     network.add(Dense(16))
     network.add(Dense(1))
     network.compile_graph()
-  
+
     input_data = np.random.rand(32, 6)
     preds = network.forward_pass(input_data)
     print(preds)
