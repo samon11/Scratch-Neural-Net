@@ -40,7 +40,7 @@ class Network:
 
         if len(self.layers) < 1:
             raise NeuralError(
-                "Not enough layers to initialize graph found",
+                "Not enough layers to initialize graph, found",
                 data=len(self.layers))
 
         for i, layer in enumerate(self.layers):
@@ -59,8 +59,6 @@ class Network:
                 # size of current matrix
                 shape = (self.shapes[i-1][1], layer.width)
                 self.shapes.append(shape)
-
-        self.shapes = self.shapes
 
     def add(self, layer, activation=None):
         """Add layer to the network graph."""
@@ -99,6 +97,15 @@ class Network:
             raise NeuralError(
                 "Network graph not compiled. Must run 'compile_graph()' first."
                 )
+        
+        output = None
+        for i, weights in enumerate(self.weight_matrices):
+            if i == 0:
+                output = np.dot(x, self.weight_matrices[0])
+    
+            output = np.dot(output, self.weight_matrices[i])
+
+        return output
 
 
 class Dense:
@@ -126,4 +133,8 @@ if __name__ == "__main__":
     network.add(Dense(16))
     network.add(Dense(1))
     network.compile_graph()
-    print([layer.shape for layer in network.weight_matrices])
+  
+    input_data = np.random.rand(32, 6)
+    preds = network.forward_pass(input_data)
+    print(preds)
+    print(preds.shape)
