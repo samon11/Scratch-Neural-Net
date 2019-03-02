@@ -10,6 +10,7 @@ import numpy as np
 
 # custom-nn imports
 from utils import NeuralError
+from neuralmath import Activations
 
 
 class Network:
@@ -22,9 +23,6 @@ class Network:
 
         # list containing layer objects in order of graph definition
         self.layers = []
-
-        # list of supported activations
-        self.activations = ['tanh', 'sigmoid', 'relu']
 
         # list containing the successive shapes of network layers
         self.shapes = []
@@ -82,7 +80,6 @@ class Network:
             random_matrix = np.random.rand(shape[0], shape[1])
             layer.weights = random_matrix
 
-            #self.weight_matrices.append(random_matrix)
         self.compiled = True
 
     def forward_pass(self, x):
@@ -95,13 +92,14 @@ class Network:
             raise NeuralError(
                 "Network graph not compiled. Must run 'compile_graph()' first."
                 )
-        
+
         output = None
         for i, layer in enumerate(self.layers):
             if i == 0:
-                output = np.dot(x, layer.weights) + layer.b
-    
-            output = np.dot(output, layer.weights) + layer.b
+                output = layer.activation(np.dot(x, layer.weights) + layer.b)
+                continue
+
+            output = layer.activation(np.dot(output, layer.weights) + layer.b)
 
         return output
 
@@ -113,7 +111,12 @@ class Dense:
         self.INPUT_SHAPE = input_shape
 
         self.width = width
-        self.activation = activation
+
+        if activation is not None:
+            self.activation = getattr(Activations, activation)
+        else:
+            # inline do nothing function for None activation
+            self.activation = lambda x: x
 
         # layer index in the graph
         self.layer_index = 0
@@ -130,9 +133,9 @@ class Dense:
 
 if __name__ == "__main__":
     network = Network()
-    network.add(Dense(6, input_shape=(6,)))
-    network.add(Dense(16))
-    network.add(Dense(1))
+    network.add(Dense(1000, input_shape=(6,), activation="relu"))
+    network.add(Dense(1600, activation="relu"))
+    network.add(Dense(1, activation="sigmoid"))
     network.compile_graph()
 
     input_data = np.random.rand(32, 6)
