@@ -27,6 +27,9 @@ class Network:
         # list containing the successive shapes of network layers
         self.shapes = []
 
+        # network biases to be initialized
+        self.biases = None
+
     def get_matrix_shapes(self):
         """
         Computes a list of all layer shapes with the input matrix
@@ -47,7 +50,7 @@ class Network:
                         "input_shape not specified for first layer got None"
                         )
 
-                shape = (layer.INPUT_SHAPE[0], layer.width)
+                shape = (layer.INPUT_SHAPE[0] + 1, layer.width)  # +1 for bias
                 self.shapes.append(shape)
 
             else:
@@ -93,13 +96,20 @@ class Network:
                 "Network graph not compiled. Must run 'compile_graph()' first."
                 )
 
+        # concatenate the bias to the input data
+        if self.biases is None:
+            init_biases = np.ones((x.shape[0], 1))
+            indata = np.concatenate((x, init_biases), axis=1)
+        else:
+            indata = np.concatenate((x, self.biases), axis=1)
+
         output = None
         for i, layer in enumerate(self.layers):
             if i == 0:
-                output = layer.activation(np.dot(x, layer.weights) + layer.b)
+                output = layer.activation(np.dot(indata, layer.weights))
                 continue
 
-            output = layer.activation(np.dot(output, layer.weights) + layer.b)
+            output = layer.activation(np.dot(output, layer.weights))
 
         return output
 
@@ -127,18 +137,15 @@ class Dense:
         # weights matrix
         self.weights = None
 
-        # set default bias value
-        self.b = 0
-
 
 if __name__ == "__main__":
     network = Network()
-    network.add(Dense(1000, input_shape=(6,), activation="relu"))
-    network.add(Dense(1600, activation="relu"))
-    network.add(Dense(1, activation="sigmoid"))
+    network.add(Dense(10000, input_shape=(6,), activation="relu"))
+    network.add(Dense(16, activation="relu"))
+    network.add(Dense(1, activation=None))
     network.compile_graph()
 
     input_data = np.random.rand(32, 6)
     preds = network.forward_pass(input_data)
     print(preds)
-    print(preds.shape)
+    print(network.shapes)

@@ -31,6 +31,5 @@ class Activations:
 
 if __name__ == "__main__":
     math = Activations()
-    print(Activations().__getattribute__("relu"))
     a = np.random.rand(2, 2)
-    print(math.d_relu(a))
+    print(Activations.d_relu(a))
