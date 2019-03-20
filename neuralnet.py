@@ -96,6 +96,9 @@ class Network:
                 "Network graph not compiled. Must run 'compile_graph()' first."
                 )
 
+        z_s = []
+        a_s = []
+
         # concatenate the bias to the input data
         if self.biases is None:
             init_biases = np.ones((x.shape[0], 1))
@@ -103,15 +106,74 @@ class Network:
         else:
             indata = np.concatenate((x, self.biases), axis=1)
 
-        output = None
         for i, layer in enumerate(self.layers):
             if i == 0:
-                output = layer.activation(np.dot(indata, layer.weights))
+                z = np.dot(indata, layer.weights)
+                a = layer.activation(z)
+
+                z_s.append(z)
+                a_s.append(a)
                 continue
 
-            output = layer.activation(np.dot(output, layer.weights))
+            z = np.dot(a, layer.weights)
+            a = layer.activation(z)
 
-        return output
+            z_s.append(z)
+            a_s.append(a)   
+
+        return z_s, a_s
+
+    def back_prop(self, x, y, lr=0.01):
+        """Back-propogate and make a weight update"""
+
+        z, a = self.forward_pass(x)
+        y_pred = a[-1]
+
+        self.layers.reverse()
+        z.reverse()
+        a.reverse()
+
+        # MSE calculation
+        loss = np.mean((y - y_pred)**2)
+        print("mse loss:", str(loss))
+
+        prev_delta = None
+        for i, layer in enumerate(self.layers):
+            # output layer
+            if i == 0:
+                error = (-2 / x.shape[0]) * (y - y_pred)
+                delta_01 = error * layer.activation(z[i], deriv=True)
+                delta_02 = np.dot(a[i + 1].T, delta_01)
+
+                # weight update
+                layer.weights -= lr * delta_02
+                print("Avg delta:", (lr * delta_02).mean())
+
+                prev_delta = delta_01
+                continue
+
+            # input layer update so set x_ to the input data
+            if i == (len(self.layers) - 1):
+                x_ = np.concatenate(
+                    (x, np.ones((x.shape[0], 1))),
+                    axis=1)
+            else:
+                x_ = z[i + 1]
+
+            w = self.layers[i - 1].weights
+
+            delta_00 = prev_delta * layer.activation(z[i], deriv=True)
+            delta_01 = delta_00.T * w
+
+            delta_02 = np.dot(a[i + 1].T, delta_01.T)
+            print(delta_02.shape)
+
+            # weight update
+            layer.weights -= lr * delta_02
+            print("Avg delta:", (lr * delta_02).mean())
+
+        # reverse layers to original position
+        self.layers.reverse()
 
 
 class Dense:
@@ -140,12 +202,11 @@ class Dense:
 
 if __name__ == "__main__":
     network = Network()
-    network.add(Dense(10000, input_shape=(6,), activation="relu"))
-    network.add(Dense(16, activation="relu"))
-    network.add(Dense(1, activation=None))
+    network.add(Dense(4, input_shape=(3,), activation="tanh"))
+    network.add(Dense(3, activation="tanh"))
+    network.add(Dense(1, activation="relu"))
     network.compile_graph()
 
-    input_data = np.random.rand(32, 6)
-    preds = network.forward_pass(input_data)
-    print(preds)
-    print(network.shapes)
+    input_data = np.random.rand(32, 3)
+    y = np.random.rand(32, 1)
+    network.back_prop(input_data, y)
