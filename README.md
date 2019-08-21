@@ -2,7 +2,6 @@
 
 A neural network framework made from scratch in Python 3.
 
-----------
 
 ## Project Overview
 
