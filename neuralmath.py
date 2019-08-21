@@ -4,7 +4,7 @@ Pre-defines all derivatives and gradients
 'd_' is shorthand for 'derivative of'
 """
 
-import numpy as np
+import autograd.numpy as np
 
 
 class Activations:

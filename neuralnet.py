@@ -6,7 +6,8 @@ Neural Network framework in python.
 @author: Michael Samon
 """
 
-import numpy as np
+import autograd.numpy as np
+from autograd import grad
 
 # custom-nn imports
 from utils import NeuralError
@@ -20,9 +21,16 @@ class Network:
     def __init__(self):
         self.training = False
         self.compiled = False
+        self.loss = 'mse'
+        self.gradients = []
 
         # list containing layer objects in order of graph definition
         self.layers = []
+
+        # weights of layers in sequential order
+        self.layer_weights = []
+
+        # 
 
         # list containing the successive shapes of network layers
         self.shapes = []
@@ -82,10 +90,11 @@ class Network:
             shape = self.shapes[layer.layer_index]
             random_matrix = np.random.rand(shape[0], shape[1])
             layer.weights = random_matrix
+            self.layer_weights.append(layer.weights)
 
         self.compiled = True
 
-    def forward_pass(self, x):
+    def forward_pass(self, x, weights):
         """
         Input a batch of data and return the output of the
         compiled graph.
@@ -108,72 +117,49 @@ class Network:
 
         for i, layer in enumerate(self.layers):
             if i == 0:
-                z = np.dot(indata, layer.weights)
+                z = np.dot(indata, weights[i])
                 a = layer.activation(z)
 
                 z_s.append(z)
                 a_s.append(a)
                 continue
 
-            z = np.dot(a, layer.weights)
+            z = np.dot(a, weights[i])
             a = layer.activation(z)
 
-            z_s.append(z)
-            a_s.append(a)   
+            z_s.append(z)  # values pre-activation
+            a_s.append(a)  # values post-activation
 
         return z_s, a_s
+
+    def compute_loss(self, x, y, weights):
+        """Get loss from one forward pass of the input"""
+        if self.loss == 'mse':
+            z, a = self.forward_pass(x, weights)
+            y_pred = a[-1]
+
+            loss = np.mean((y - y_pred)**2)
+            print("Network Loss:", loss._value)
+            return loss
+
+    gradients_op = grad(compute_loss, 3)
 
     def back_prop(self, x, y, lr=0.01):
         """Back-propogate and make a weight update"""
 
-        z, a = self.forward_pass(x)
-        y_pred = a[-1]
+        gradients = self.gradients_op(x, y, self.layer_weights)
+        epoch_gradients = []
+        for i, weights in enumerate(self.layer_weights):
+            self.layer_weights[i] -= gradients[i] * lr
+            epoch_gradients.append(gradients[i] * lr)
 
-        self.layers.reverse()
-        z.reverse()
-        a.reverse()
+        self.gradients.append(epoch_gradients)
 
-        # MSE calculation
-        loss = np.mean((y - y_pred)**2)
-        print("mse loss:", str(loss))
+    def train(self, x, y, epochs=10, lr=0.01):
+        """Run `epochs` amount of gradient updates"""
 
-        prev_delta = None
-        for i, layer in enumerate(self.layers):
-            # output layer
-            if i == 0:
-                error = (-2 / x.shape[0]) * (y - y_pred)
-                delta_01 = error * layer.activation(z[i], deriv=True)
-                delta_02 = np.dot(a[i + 1].T, delta_01)
-
-                # weight update
-                layer.weights -= lr * delta_02
-                print("Avg delta:", (lr * delta_02).mean())
-
-                prev_delta = delta_01
-                continue
-
-            # input layer update so set x_ to the input data
-            if i == (len(self.layers) - 1):
-                x_ = np.concatenate(
-                    (x, np.ones((x.shape[0], 1))),
-                    axis=1)
-            else:
-                x_ = z[i + 1]
-
-            w = self.layers[i - 1].weights
-
-            delta_00 = prev_delta * layer.activation(z[i], deriv=True)
-            delta_01 = delta_00.T * w
-
-            delta_02 = np.dot(a[i + 1].T, delta_01.T)
-            print(delta_02.shape)
-
-            # weight update
-            layer.weights -= lr * delta_02
-            print("Avg delta:", (lr * delta_02).mean())
-
-        # reverse layers to original position
-        self.layers.reverse()
+        for _ in range(epochs):
+            self.back_prop(x, y, lr=lr)
 
 
 class Dense:
@@ -205,8 +191,9 @@ if __name__ == "__main__":
     network.add(Dense(4, input_shape=(3,), activation="tanh"))
     network.add(Dense(3, activation="tanh"))
     network.add(Dense(1, activation="relu"))
-    network.compile_graph()
+    network.compile_graph()  # initialize variables into memory
 
     input_data = np.random.rand(32, 3)
     y = np.random.rand(32, 1)
-    network.back_prop(input_data, y)
+
+    network.train(input_data, y, epochs=50)
