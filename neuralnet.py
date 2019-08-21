@@ -12,6 +12,7 @@ from autograd import grad
 # custom-nn imports
 from utils import NeuralError
 from neuralmath import Activations
+from neuralgraph import plot_values
 
 
 class Network:
@@ -19,9 +20,10 @@ class Network:
     Handles matrix shaping and initialization.
     """
     def __init__(self):
-        self.training = False
         self.compiled = False
         self.loss = 'mse'
+
+        # list of arrays containing layer weight updates for each epoch
         self.gradients = []
 
         # list containing layer objects in order of graph definition
@@ -29,8 +31,6 @@ class Network:
 
         # weights of layers in sequential order
         self.layer_weights = []
-
-        # 
 
         # list containing the successive shapes of network layers
         self.shapes = []
@@ -135,7 +135,7 @@ class Network:
     def compute_loss(self, x, y, weights):
         """Get loss from one forward pass of the input"""
         if self.loss == 'mse':
-            z, a = self.forward_pass(x, weights)
+            _, a = self.forward_pass(x, weights)
             y_pred = a[-1]
 
             loss = np.mean((y - y_pred)**2)
@@ -160,6 +160,11 @@ class Network:
 
         for _ in range(epochs):
             self.back_prop(x, y, lr=lr)
+
+    def get_layer_gradients(self, layer_index):
+        """Return list of gradient updates for every epoch"""
+
+        return [grads[layer_index] for grads in self.gradients]
 
 
 class Dense:
@@ -197,3 +202,6 @@ if __name__ == "__main__":
     y = np.random.rand(32, 1)
 
     network.train(input_data, y, epochs=50)
+
+    input_layer_grads = network.get_layer_gradients(layer_index=0)
+    plot_values(input_layer_grads)
